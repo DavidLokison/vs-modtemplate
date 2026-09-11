@@ -9,7 +9,6 @@ permissions:
 jobs:
   build:
     name: Build Project
-    needs: commit
     runs-on: ubuntu-22.04
     outputs:
       artifact-digest: ${{ steps.build.outputs.artifact-digest }}
