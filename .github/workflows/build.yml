@@ -1,0 +1,22 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Project
+    needs: commit
+    runs-on: ubuntu-22.04
+    outputs:
+      artifact-digest: ${{ steps.build.outputs.artifact-digest }}
+      artifact-name: ${{ steps.build.outputs.artifact-name }}.zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Build Project
+        id: build
+        uses: DavidLokison/vs-build@v1

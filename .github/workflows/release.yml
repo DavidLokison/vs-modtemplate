@@ -1,0 +1,91 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'SemVer format release tag'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  commit:
+    name: Create Release Commit
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.commit.outputs.commit }}
+      project-name: ${{ steps.commit.outputs.project-name }}
+      project-tag: ${{ steps.commit.outputs.project-tag }}
+    steps:
+      - name: Create Release Commit
+        id: commit
+        uses: DavidLokison/vs-build/commit@v1
+        with:
+          version: ${{ github.event.inputs.version }}
+          changelog-path: CHANGELOG.md
+
+  build:
+    name: Build Project
+    needs: commit
+    runs-on: ubuntu-22.04
+    outputs:
+      artifact-digest: ${{ steps.build.outputs.artifact-digest }}
+      artifact-name: ${{ steps.build.outputs.artifact-name }}.zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.commit.outputs.commit }}
+      - name: Build Project
+        id: build
+        uses: DavidLokison/vs-build@v1
+
+  attest:
+    name: Attest Build
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Attest Build
+        uses: actions/attest@v4
+        with:
+          subject-digest: ${{ needs.build.outputs.artifact-digest }}
+          subject-name: ${{ needs.build.outputs.artifact-name }}
+
+  release:
+    name: Draft Release
+    needs: [ commit, build ]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifact
+        id: download
+        uses: actions/download-artifact@v8
+        with:
+          skip-decompress: true
+      - name: Checkout Changelog
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: CHANGELOG.md
+          sparse-checkout-cone-mode: false
+      - name: Extract Release Notes
+        shell: bash
+        run: grep -Pzoe '(?<=\n## \[Unreleased]\n\n)(.*\n)*?(?=\n## )' CHANGELOG.md > RELEASE.md
+      - name: Publish Draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ needs.commit.outputs.project-tag }}" *.zip
+          --repo ${{ github.repository }}
+          --target ${{ needs.commit.outputs.commit }}
+          --draft
+          --notes-file RELEASE.md
+          --title "${{ needs.commit.outputs.project-name }} ${{ needs.commit.outputs.project-tag }}"
