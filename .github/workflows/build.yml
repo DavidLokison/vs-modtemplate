@@ -7,15 +7,69 @@ permissions:
   contents: read
 
 jobs:
+  cache:
+    name: Fetch CakeBuild metadata
+    outputs:
+      cache-key: ${{ steps.cache.outputs.cache-matched-key }}
+      cache-hit: ${{ steps.cache.outputs.cache-hit}}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Fetch CakeBuild Cache Key
+        id: fetch
+        shell: bash
+        run: echo "cache=cake-$(gh api "repos/${{ github.repository }}/contents/build?ref=${{ github.sha }}" --jq .sha)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Lookup CakeBuild Cache
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ steps.fetch.outputs.cache }}
+          lookup-only: true
+
+  cake:
+    name: Build CakeBuild
+    needs: cache
+    if: needs.cache.outputs.cache-hit != 'true'
+    uses: ./.github/workflows/build-cake.yml
+    with:
+      cache-key: ${{ needs.cache.outputs.cache-key }}
+
   build:
     name: Build Project
+    needs: [cache, cake]
+    if: always() && (needs.cache.outputs.cache-hit == 'true' || needs.cake.result == 'success')
     runs-on: ubuntu-22.04
-    outputs:
-      artifact-digest: ${{ steps.build.outputs.artifact-digest }}
-      artifact-name: ${{ steps.build.outputs.artifact-name }}.zip
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Restore CakeBuild
+        uses: actions/cache/restore@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ needs.cache.outputs.cache-key }}
+      - name: Fetch Metadata
+        id: metadata
+        shell: bash
+        run: |
+          echo "type=client" >> "$GITHUB_OUTPUT"
+          echo "game_version=$(jq -r .dependencies.game modinfo.json)" >> "$GITHUB_OUTPUT"
+          echo "basename=$(jq -r '.modid+"_"+.version' modinfo.json)" >> "$GITHUB_OUTPUT"
+      - name: Download Vintage Story
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -xz
+        env:
+          VS_URL: https://cdn.vintagestory.at/gamefiles/stable
+          VS_TARGET: vs_${{ steps.metadata.outputs.type }}_linux-x64_${{ steps.metadata.outputs.game_version }}.tar.gz
       - name: Build Project
         id: build
-        uses: DavidLokison/vs-build@v1
+        shell: bash
+        run: ./bin/CakeBuild
+      - name: Upload Artifact
+        id: upload
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ steps.metadata.outputs.basename }}
+          path: bin/Release/publish

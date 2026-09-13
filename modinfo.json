@@ -8,6 +8,6 @@
     "description": "This mod is a stub. It is intended as a template to develop new Vintage Story mods in an open and cryptographically verified way with build attestation pipelines to prove the origin of a mod artifact.",
     "version": "1.0.0",
     "dependencies": {
-        "game": ""
+        "game": "1.22.0"
     }
 }

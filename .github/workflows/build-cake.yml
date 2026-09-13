@@ -1,0 +1,43 @@
+name: Build CakeBuild
+
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  cake:
+    name: Build CakeBuild Submodule
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Fetch Metadata
+        id: metadata
+        shell: bash
+        run: |
+          echo "type=client" >> "$GITHUB_OUTPUT"
+          echo "game_version=$(jq .dependencies.game modinfo.json)" >> "$GITHUB_OUTPUT"
+      - name: Download Vintage Story
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -xz
+        env:
+          VS_URL: https://cdn.vintagestory.at/gamefiles/stable
+          VS_TARGET: vs_${{ steps.metadata.outputs.type }}_linux-x64_${{ steps.metadata.outputs.game_version }}.tar.gz
+      - name: Build CakeBuild Submodule
+        shell: bash
+        run: dotnet publish build
+      - name: Cache CakeBuild
+        id: cache-cake
+        uses: actions/cache/save@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ inputs.cache-key }}
