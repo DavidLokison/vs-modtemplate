@@ -10,7 +10,7 @@ jobs:
   cache:
     name: Fetch CakeBuild metadata
     outputs:
-      cache-key: ${{ steps.cache.outputs.cache-matched-key }}
+      cache-key: ${{ steps.fetch.outputs.cache }}
       cache-hit: ${{ steps.cache.outputs.cache-hit}}
     runs-on: ubuntu-22.04
     steps:
