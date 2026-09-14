@@ -7,39 +7,13 @@ permissions:
   contents: read
 
 jobs:
-  cache:
-    name: Fetch CakeBuild metadata
-    outputs:
-      cache-key: ${{ steps.fetch.outputs.cache }}
-      cache-hit: ${{ steps.cache.outputs.cache-hit}}
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Fetch CakeBuild Cache Key
-        id: fetch
-        shell: bash
-        run: echo "cache=cake-$(gh api "repos/${{ github.repository }}/contents/build?ref=${{ github.sha }}" --jq .sha)" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Lookup CakeBuild Cache
-        id: cache
-        uses: actions/cache/restore@v6
-        with:
-          path: bin/CakeBuild
-          key: ${{ steps.fetch.outputs.cache }}
-          lookup-only: true
-
   cake:
     name: Build CakeBuild
-    needs: cache
-    if: needs.cache.outputs.cache-hit != 'true'
     uses: ./.github/workflows/build-cake.yml
-    with:
-      cache-key: ${{ needs.cache.outputs.cache-key }}
 
   build:
     name: Build Project
-    needs: [cache, cake]
-    if: always() && (needs.cache.outputs.cache-hit == 'true' || needs.cake.result == 'success')
+    needs: cake
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -48,14 +22,13 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: bin/CakeBuild
-          key: ${{ needs.cache.outputs.cache-key }}
+          key: ${{ needs.cake.outputs.cache-key }}
       - name: Fetch Metadata
         id: metadata
         shell: bash
         run: |
           echo "type=client" >> "$GITHUB_OUTPUT"
-          echo "game_version=$(jq -r .dependencies.game modinfo.json)" >> "$GITHUB_OUTPUT"
-          echo "basename=$(jq -r '.modid+"_"+.version' modinfo.json)" >> "$GITHUB_OUTPUT"
+          echo "game_version=$(dotnet msbuild -getProperty:TargetVintageStory)" >> "$GITHUB_OUTPUT"
       - name: Download Vintage Story
         shell: bash
         working-directory: ${{ runner.temp }}
@@ -66,10 +39,13 @@ jobs:
       - name: Build Project
         id: build
         shell: bash
-        run: ./bin/CakeBuild
+        run: |
+          ./bin/CakeBuild
+          echo "modid=$(jq -r '.ModID' dist/Release/*/modinfo.json)" >> "$GITHUB_OUTPUT"
+          echo "basename=$(jq -r '.ModID+"_"+.Version' dist/Release/*/modinfo.json)" >> "$GITHUB_OUTPUT"
       - name: Upload Artifact
         id: upload
         uses: actions/upload-artifact@v5
         with:
-          name: ${{ steps.metadata.outputs.basename }}
-          path: bin/Release/publish
+          name: ${{ steps.build.outputs.basename }}
+          path: dist/Release/${{ steps.build.outputs.modid }}
