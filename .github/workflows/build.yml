@@ -33,7 +33,11 @@ jobs:
       - name: Download Vintage Story
         shell: bash
         working-directory: ${{ runner.temp }}
-        run: curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -xz
+        run: |
+          mkdir vintagestory
+          ln -s . vintagestory/vintagestory
+          curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -C vintagestory -xzh
+          rm vintagestory/vintagestory
         env:
           VS_URL: https://cdn.vintagestory.at/gamefiles/stable
           VS_TARGET: vs_${{ steps.game.outputs.runtime }}_linux-x64_${{ steps.game.outputs.version }}.tar.gz
