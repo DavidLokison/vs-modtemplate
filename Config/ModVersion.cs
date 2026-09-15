@@ -34,6 +34,6 @@ namespace ModTemplate.Config
         /// <summary>
         /// Copyright notice
         /// </summary>
-        public const string CopyRight = "Template under MIT License © 2026 David 'DavidLokison' Ehnert";
+        public const string CopyRight = "Template under CC0 1.0 Universal";
     }
 }
