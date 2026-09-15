@@ -37,7 +37,7 @@ using ModTemplate.Config;
 [assembly: AssemblyFileVersion(ModVersion.OverallVersion)]
 
 [assembly: ModInfo("Template Mod", "modtemplate",
-    Version = ModVersion.ShortGameVersion,
+    Version = ModVersion.OverallVersion,
     NetworkVersion = ModVersion.NetworkVersion,
     IconPath = "modtemplate/textures/gui/modicon.png",
     Description = "This mod is a stub – it is intended as a template to develop new Vintage Story mods in an open and cryptographically verified way",

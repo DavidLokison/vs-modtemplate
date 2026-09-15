@@ -19,22 +19,7 @@ namespace ModTemplate.Config
         /// </summary>
         public const string OverallVersion = OverallMajorMinor + ".0";
 
-        /// <summary>
-        /// Whether this is a stable or unstable version
-        /// </summary>
-        public const EnumGameBranch Branch = EnumGameBranch.Stable;
-
-        /// <summary>
-        /// Version number in the format: major.minor.revision-[rc/pre.subrevision]
-        /// </summary>
-        public const string ShortGameVersion = OverallVersion + "";
-
-        public static EnumReleaseType ReleaseType => GameVersion.GetReleaseType(ShortGameVersion);
-
-        /// <summary>
-        /// Version number in the format: major.minor.revision-[rc/pre.subrevision] [release title]
-        /// </summary>
-        public static string LongGameVersion = "v" + ShortGameVersion + " (" + Branch + ")";
+        public static EnumReleaseType ReleaseType => GameVersion.GetReleaseType(OverallVersion);
 
         /// <summary>
         /// Assembly Info Version number in the format: major.minor.revision.subrevision
@@ -49,7 +34,6 @@ namespace ModTemplate.Config
         /// <summary>
         /// Copyright notice
         /// </summary>
-        public const string CopyRight = "Copyright © 2016-2026 Anego Studios";
-
+        public const string CopyRight = "Template Licensed under MIT License © 2026 David 'DavidLokison' Ehnert";
     }
 }
