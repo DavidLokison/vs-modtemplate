@@ -23,19 +23,20 @@ jobs:
         with:
           path: bin/CakeBuild
           key: ${{ needs.cake.outputs.cache-key }}
-      - name: Fetch Metadata
-        id: metadata
+      - name: Fetch VintageStory Target
+        id: game
         shell: bash
         run: |
-          echo "type=client" >> "$GITHUB_OUTPUT"
-          echo "game_version=$(dotnet msbuild -getProperty:TargetVintageStory)" >> "$GITHUB_OUTPUT"
+          TARGET=$(dotnet msbuild -getProperty:TargetVintageStory)
+          echo "runtime=${TARGET%:*}" >> "$GITHUB_OUTPUT"
+          echo "version=${TARGET#*:}" >> "$GITHUB_OUTPUT"
       - name: Download Vintage Story
         shell: bash
         working-directory: ${{ runner.temp }}
         run: curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -xz
         env:
           VS_URL: https://cdn.vintagestory.at/gamefiles/stable
-          VS_TARGET: vs_${{ steps.metadata.outputs.type }}_linux-x64_${{ steps.metadata.outputs.game_version }}.tar.gz
+          VS_TARGET: vs_${{ steps.game.outputs.runtime }}_linux-x64_${{ steps.game.outputs.version }}.tar.gz
       - name: Build Project
         id: build
         shell: bash
