@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <FrameworkVersion>net10.0</FrameworkVersion>
+    <VintageStoryVersion>1.22.0</VintageStoryVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <VintageStoryPath Condition="'$(CI)' == 'true'">$(RUNNER_TEMP)/vintagestory</VintageStoryPath>
+    <VintageStoryPath Condition="'$(VintageStoryPath)' == ''">$(VINTAGE_STORY)</VintageStoryPath>
+  </PropertyGroup>
+</Project>

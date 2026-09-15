@@ -7,15 +7,50 @@ permissions:
   contents: read
 
 jobs:
+  cake:
+    name: Build CakeBuild
+    uses: ./.github/workflows/build-cake.yml
+
   build:
     name: Build Project
+    needs: cake
     runs-on: ubuntu-22.04
-    outputs:
-      artifact-digest: ${{ steps.build.outputs.artifact-digest }}
-      artifact-name: ${{ steps.build.outputs.artifact-name }}.zip
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+      - name: Restore CakeBuild
+        uses: actions/cache/restore@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ needs.cake.outputs.cache-key }}
+      - name: Fetch VintageStory Target
+        id: game
+        shell: bash
+        run: |
+          TARGET=$(dotnet msbuild -getProperty:TargetVintageStory)
+          echo "runtime=${TARGET%:*}" >> "$GITHUB_OUTPUT"
+          echo "version=${TARGET#*:}" >> "$GITHUB_OUTPUT"
+      - name: Download Vintage Story
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir vintagestory
+          ln -s . vintagestory/vintagestory
+          curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -C vintagestory -xzh
+          rm vintagestory/vintagestory
+        env:
+          VS_URL: https://cdn.vintagestory.at/gamefiles/stable
+          VS_TARGET: vs_${{ steps.game.outputs.runtime }}_linux-x64_${{ steps.game.outputs.version }}.tar.gz
       - name: Build Project
         id: build
-        uses: DavidLokison/vs-build@v1
+        shell: bash
+        run: |
+          ./bin/CakeBuild
+          echo "modid=$(jq -r '.ModID' dist/Release/*/modinfo.json)" >> "$GITHUB_OUTPUT"
+          echo "basename=$(jq -r '.ModID+"_"+.Version' dist/Release/*/modinfo.json)" >> "$GITHUB_OUTPUT"
+      - name: Upload Artifact
+        id: upload
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ steps.build.outputs.basename }}
+          path: dist/Release/${{ steps.build.outputs.modid }}

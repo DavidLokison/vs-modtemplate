@@ -1,0 +1,72 @@
+name: Build CakeBuild
+
+on:
+  workflow_call:
+    outputs:
+      cache-key:
+        description: 'Cache key of the CakeBuild assembly'
+        value: ${{ jobs.main.outputs.cache-key }}
+      cache-hit:
+        description: 'Whether there was a cache hit or a rebuild'
+        value: ${{ jobs.main.outputs.cache-hit }}
+
+permissions:
+  contents: read
+
+jobs:
+  main:
+    name: Main
+    outputs:
+      cache-key: ${{ steps.fetch.outputs.cache }}
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Fetch CakeBuild Cache Key
+        id: fetch
+        shell: bash
+        run: echo "cache=cake-$(gh api "repos/${{ github.repository }}/contents/build?ref=${{ github.sha }}" --jq .sha)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Lookup CakeBuild Cache
+        id: cache
+        uses: actions/cache/restore@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ steps.fetch.outputs.cache }}
+          lookup-only: true
+      - name: Checkout
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Fetch VintageStory Target
+        id: game
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          TARGET=$(dotnet msbuild -getProperty:TargetVintageStory)
+          echo "runtime=${TARGET%:*}" >> "$GITHUB_OUTPUT"
+          echo "version=${TARGET#*:}" >> "$GITHUB_OUTPUT"
+      - name: Download Vintage Story
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir vintagestory
+          ln -s . vintagestory/vintagestory
+          curl -fSL "${{ env.VS_URL }}/${{ env.VS_TARGET }}" | tar -C vintagestory -xzh
+          rm vintagestory/vintagestory
+        env:
+          VS_URL: https://cdn.vintagestory.at/gamefiles/stable
+          VS_TARGET: vs_${{ steps.game.outputs.runtime }}_linux-x64_${{ steps.game.outputs.version }}.tar.gz
+      - name: Build CakeBuild Submodule
+        if: steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: dotnet publish build
+      - name: Cache CakeBuild
+        if: steps.cache.outputs.cache-hit != 'true'
+        id: cache-cake
+        uses: actions/cache/save@v6
+        with:
+          path: bin/CakeBuild
+          key: ${{ steps.fetch.outputs.cache }}

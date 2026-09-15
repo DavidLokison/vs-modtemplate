@@ -1,1 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk"/>
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="build/Project.Build.props"/>
+  <PropertyGroup>
+    <TargetFramework>$(FrameworkVersion)</TargetFramework>
+    <TargetVintageStory>server:$(VintageStoryVersion)</TargetVintageStory>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
